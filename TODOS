@@ -1,0 +1,4 @@
+- Complete the rest of services update/delete etc... (DONE)
+- Error Handling Learn how to make business exceptions 
+- Learn how to make security and tokens and add login service
+- add App Constants ex. maximum number of teachers per subject & maximum number of students per subject
