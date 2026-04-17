@@ -7,6 +7,7 @@ import { Repository } from 'typeorm';
 import { NotFoundError } from 'rxjs';
 import { SubjectService } from 'src/subject/subject.service';
 import { UserTypeService } from 'src/user-type/user-type.service';
+import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class UserService {
@@ -17,7 +18,9 @@ export class UserService {
 
       private readonly subjectService : SubjectService,
 
-      private readonly userTypeService : UserTypeService
+      private readonly userTypeService : UserTypeService,
+
+      private readonly authService : AuthService
     ) {}
 
 
@@ -30,7 +33,7 @@ export class UserService {
     const user =  this.userRepo.create({
       name: createUserDto.name,
       email : createUserDto.email,
-      password : createUserDto.password,
+      password : await this.authService.hashPassword(createUserDto.password),
       subject : createUserDto.subjectId ? {id : createUserDto.subjectId} : undefined,
       userType : {id : createUserDto.userTypeId}
     });
@@ -83,7 +86,7 @@ export class UserService {
   async validateUser(email: string, password: string): Promise<User | null> {
     const user  = await this.findOne(email)
 
-    if(user && user.password === password){
+    if(user && await this.authService.validatePassword(password, user.password)){
     return user;
     } else return null;
   }
