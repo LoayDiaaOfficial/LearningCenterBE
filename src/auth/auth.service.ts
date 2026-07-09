@@ -11,7 +11,7 @@ export class AuthService {
     constructor(private readonly jwtService : JwtService){};
 
     generateToken(user : User){
-        const payload = { sub: user.id, role: user.userType.id };
+        const payload = { sub: user.id, role: user.userType.type};
         return this.jwtService.sign(payload);
     }
 
