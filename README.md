@@ -1,98 +1,142 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Learning Center Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+REST API backend for a learning center (school-style platform) that serves **students**, **teachers**, **supervisors**, and optionally **parents**. Built with **NestJS**, with authentication and role-based access so each user type can call only the APIs meant for them.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Overview
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Item | Detail |
+|------|--------|
+| **Purpose** | Backend for managing users, subjects, and role-based access in a learning center |
+| **Framework** | NestJS (Node.js / TypeScript) |
+| **Database** | PostgreSQL via TypeORM |
+| **Auth** | JWT tokens, Passport, bcrypt password hashing |
+| **Validation** | `class-validator` + global `ValidationPipe` |
 
-## Project setup
+---
+
+## Roles & Access
+
+Users are linked to a **user type** (role). Each role has its own API surface and permissions:
+
+| Role | Typical access |
+|------|----------------|
+| **Student** | View subjects / own profile; limited write access |
+| **Teacher** | Manage assigned subjects and related student data |
+| **Supervisor** | Broader admin-style oversight across users and subjects |
+| **Parent** *(optional)* | Read-only or limited view of linked student info |
+
+Access is enforced through NestJS security (JWT payload includes user identity and role), so clients only reach endpoints allowed for their role.
+
+---
+
+## Modules
+
+| Module | Responsibility |
+|--------|----------------|
+| **Auth** | JWT generation, password hashing / validation |
+| **User** | CRUD for users + login (`POST /user/login`) |
+| **UserType** | Role definitions (student, teacher, supervisor, etc.) |
+| **Subject** | Subjects taught / enrolled in the center |
+
+### Core entities
+
+- **User** — name, email, password; linked to a `UserType` and optionally a `Subject`
+- **UserType** — role label used for authorization
+- **Subject** — course/subject with related users
+
+---
+
+## Tech stack
+
+- NestJS 11
+- TypeORM + PostgreSQL
+- `@nestjs/jwt` / `@nestjs/passport` / `passport-jwt`
+- `bcrypt` for password hashing
+- `@nestjs/config` for configuration
+- `class-validator` / `class-transformer` for DTO validation
+
+---
+
+## Getting started
+
+### Prerequisites
+
+- Node.js (LTS recommended)
+- PostgreSQL database
+- npm
+
+### Install
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+### Configure
+
+Set database and JWT settings via environment variables (e.g. `.env`):
+
+```env
+PORT=3000
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=your_password
+DB_DATABASE=LearningCenterDB
+JWT_SECRET=your-secret-key
+```
+
+### Run
 
 ```bash
-# development
-$ npm run start
+# development (watch mode)
+npm run start:dev
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# production build + run
+npm run build
+npm run start:prod
 ```
 
-## Run tests
+API default URL: `http://localhost:3000`
 
-```bash
-# unit tests
-$ npm run test
+---
 
-# e2e tests
-$ npm run test:e2e
+## Main API areas
 
-# test coverage
-$ npm run test:cov
-```
+| Resource | Base path | Notes |
+|----------|-----------|-------|
+| Users | `/user` | Create, list, get, update, delete |
+| Login | `/user/login` | Returns `accessToken` + safe user payload |
+| User types | `/user-type` | Manage roles |
+| Subjects | `/subject` | Manage subjects |
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Scripts
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+| Command | Description |
+|---------|-------------|
+| `npm run start:dev` | Start in watch mode |
+| `npm run build` | Compile TypeScript |
+| `npm run start:prod` | Run compiled app |
+| `npm run test` | Unit tests |
+| `npm run test:e2e` | End-to-end tests |
+| `npm run lint` | ESLint |
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+---
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Project status
 
-## Resources
+Done as a NestJS backend foundation for a learning-center platform:
 
-Check out a few resources that may come in handy when working with NestJS:
+- Modular NestJS structure (users, roles, subjects, auth)
+- PostgreSQL persistence with TypeORM
+- Login with JWT and hashed passwords
+- Role model ready for role-based API access (students / teachers / supervisors / parents)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Private / UNLICENSED
