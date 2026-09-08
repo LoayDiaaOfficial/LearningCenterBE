@@ -42,6 +42,6 @@ export class UserTypeService {
   }
 
   remove(type: string) {
-    return this.userTypeRepo.delete(type);
+    return this.userTypeRepo.delete({ type });
   }
 }

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -7,37 +7,39 @@ import { UserTypeModule } from './user-type/user-type.module';
 import { SubjectModule } from './subject/subject.module';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
+import { EnrollmentModule } from './enrollment/enrollment.module';
+import { GradeModule } from './grade/grade.module';
+import { SeedModule } from './seed/seed.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true
+      isGlobal: true,
     }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'ep-super-queen-alvrernt.c-3.eu-central-1.aws.neon.tech',
-      port: 5432,
-      username: 'neondb_owner',
-      password: 'npg_FRJ1vVQ2eyjP',
-      database: 'LearningCenterDB',
-      ssl: { rejectUnauthorized: false },
-      synchronize: true, // ONLY in development
-      autoLoadEntities: true, // loads all entities aSutomatically
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get<string>('DB_HOST'),
+        port: Number(config.get('DB_PORT', 5432)),
+        username: config.get<string>('DB_USERNAME'),
+        password: config.get<string>('DB_PASSWORD'),
+        database: config.get<string>('DB_DATABASE'),
+        ssl:
+          config.get('DB_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
+        synchronize: config.get('DB_SYNCHRONIZE') === 'true',
+        autoLoadEntities: true,
+      }),
     }),
-    // TypeOrmModule.forRoot({
-    //   type: 'postgres',
-    //   host: '',
-    //   port: 5432,
-    //   username: 'postgres',
-    //   password: 'postgres',
-    //   database: 'LearningCenterDB',
-    //   synchronize: true, // ONLY in development
-    //   autoLoadEntities: true, // loads all entities aSutomatically
-    // }),
     UserTypeModule,
     SubjectModule,
     UserModule,
-    AuthModule
+    AuthModule,
+    EnrollmentModule,
+    GradeModule,
+    SeedModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UnauthorizedException, HttpCode } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UnauthorizedException,
+  HttpCode,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -7,12 +17,34 @@ import { AuthService } from 'src/auth/auth.service';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Role } from 'src/enums/role.enum';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { CurrentUser, AuthUser } from 'src/auth/decorators/current-user.decorator';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService
-    , private readonly authService : AuthService
+  constructor(
+    private readonly userService: UserService,
+    private readonly authService: AuthService,
   ) {}
+
+  @Public()
+  @Post('login')
+  @HttpCode(200)
+  async login(@Body() loginDto: LoginDto) {
+    const user = await this.userService.validateUser(
+      loginDto.email,
+      loginDto.password,
+    );
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const { password, ...safeUser } = user;
+    return { accessToken: this.authService.generateToken(user), user: safeUser };
+  }
+
+  @Get('me')
+  me(@CurrentUser() authUser: AuthUser) {
+    return this.userService.findById(authUser.id);
+  }
 
   @Roles(Role.Admin)
   @Post()
@@ -42,17 +74,5 @@ export class UserController {
   @Delete(':email')
   remove(@Param('email') email: string) {
     return this.userService.remove(email);
-  }
-
-  @Public()
-  @Post('login')
-  @HttpCode(200)
-  async login(@Body() loginDto: LoginDto) {
-    const user = await this.userService.validateUser(loginDto.email, loginDto.password);
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-    const {password, ...safeUser} = user;
-    return {accessToken: this.authService.generateToken(user) , user : safeUser}; 
   }
 }

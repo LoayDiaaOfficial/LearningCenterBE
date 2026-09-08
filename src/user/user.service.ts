@@ -4,91 +4,106 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
-import { NotFoundError } from 'rxjs';
 import { SubjectService } from 'src/subject/subject.service';
 import { UserTypeService } from 'src/user-type/user-type.service';
 import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class UserService {
- 
   constructor(
-      @InjectRepository(User)
-      private readonly userRepo : Repository<User>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    private readonly subjectService: SubjectService,
+    private readonly userTypeService: UserTypeService,
+    private readonly authService: AuthService,
+  ) {}
 
-      private readonly subjectService : SubjectService,
-
-      private readonly userTypeService : UserTypeService,
-
-      private readonly authService : AuthService
-    ) {}
-
-
-  
   async create(createUserDto: CreateUserDto) {
-   console.log("Checking if email exists before");
-   const exists = await this.userRepo.existsBy({email:createUserDto.email});
-   if(!exists){
-   console.log("Saving to DB");
-    const user =  this.userRepo.create({
+    const exists = await this.userRepo.existsBy({ email: createUserDto.email });
+    if (exists) throw new ConflictException('This Email Already Exists');
+
+    const user = this.userRepo.create({
       name: createUserDto.name,
-      email : createUserDto.email,
-      password : await this.authService.hashPassword(createUserDto.password),
-      subject : createUserDto.subjectId ? {id : createUserDto.subjectId} : undefined,
-      userType : {id : createUserDto.userTypeId}
+      email: createUserDto.email,
+      password: await this.authService.hashPassword(createUserDto.password),
+      subject: createUserDto.subjectId ? { id: createUserDto.subjectId } : undefined,
+      userType: { id: createUserDto.userTypeId },
     });
-    return await this.userRepo.save(user);
-  }else throw new ConflictException("This Email Already Exists");
+    const saved = await this.userRepo.save(user);
+    return this.findById(saved.id);
   }
 
   findAll() {
     return this.userRepo.find();
   }
 
-  async findOne(email : string) {
-    return this.userRepo.findOneBy({email:email});
+  findById(id: number) {
+    return this.userRepo.findOne({ where: { id } });
+  }
+
+  async findOne(email: string) {
+    const user = await this.userRepo.findOneBy({ email });
+    if (!user) throw new NotFoundException('No User Found');
+    return user;
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
-    const user  = await this.userRepo.preload({
+    const user = await this.userRepo.preload({
       id,
-      name :updateUserDto.name,
-      email:updateUserDto.email,
-      password: updateUserDto.password
-    })
+      name: updateUserDto.name,
+      email: updateUserDto.email,
+    });
 
-    if (!user){
-      throw new NotFoundException("No User Found");
+    if (!user) {
+      throw new NotFoundException('No User Found');
     }
 
-    const [subject,userType] = await Promise.all([
-      updateUserDto.subjectId != null ? this.subjectService.findById(updateUserDto.subjectId) : Promise.resolve(undefined),
-      updateUserDto.userTypeId != null? this.userTypeService.findOneById(updateUserDto.userTypeId) : Promise.resolve(undefined)
-    ])
+    if (updateUserDto.password) {
+      user.password = await this.authService.hashPassword(updateUserDto.password);
+    }
 
-    if(updateUserDto.subjectId !== undefined && !subject) throw new NotFoundException("No Subject Found with this ID");
-    
+    const [subject, userType] = await Promise.all([
+      updateUserDto.subjectId != null
+        ? this.subjectService.findById(updateUserDto.subjectId)
+        : Promise.resolve(undefined),
+      updateUserDto.userTypeId != null
+        ? this.userTypeService.findOneById(updateUserDto.userTypeId)
+        : Promise.resolve(undefined),
+    ]);
 
-    if(updateUserDto.userTypeId !== undefined && !userType) throw new NotFoundException("No User Type Found with this ID ");
+    if (updateUserDto.subjectId !== undefined && !subject) {
+      throw new NotFoundException('No Subject Found with this ID');
+    }
 
-    if(subject) user.subject= subject;
-    if(userType) user.userType = userType; 
-    
+    if (updateUserDto.userTypeId !== undefined && !userType) {
+      throw new NotFoundException('No User Type Found with this ID ');
+    }
 
-    return this.userRepo.save(user);
+    if (subject) user.subject = subject;
+    if (userType) user.userType = userType;
+
+    await this.userRepo.save(user);
+    return this.findById(id);
   }
 
-  remove(email: string) {
-    return this.userRepo.delete({email:email});
+  async remove(email: string) {
+    const result = await this.userRepo.delete({ email });
+    if (!result.affected) throw new NotFoundException('No User Found');
+    return { deleted: true };
   }
-
 
   async validateUser(email: string, password: string): Promise<User | null> {
-    const user  = await this.findOne(email)
+    const user = await this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .leftJoinAndSelect('user.userType', 'userType')
+      .leftJoinAndSelect('user.subject', 'subject')
+      .where('user.email = :email', { email })
+      .getOne();
 
-    if(user && await this.authService.validatePassword(password, user.password)){
-    return user;
-    } else return null;
+    if (user && (await this.authService.validatePassword(password, user.password))) {
+      return user;
+    }
+    return null;
   }
-
 }

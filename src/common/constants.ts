@@ -1,0 +1,1 @@
+export const MAX_STUDENTS_PER_SUBJECT = 1;
